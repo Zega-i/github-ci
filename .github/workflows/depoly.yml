@@ -29,21 +29,11 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Deploy via SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Pastikan IP ini adalah IP yang bisa diakses dari internet atau gunakan Ngrok
-          SERVER_IP: "IP_PUBLIK_ANDA_ATAU_NGROK" 
+      - name: Pull and run container
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa augus@$SERVER_IP "
             docker pull ghcr.io/${{ github.repository_owner }}/github-ci:latest
             docker stop github-ci-container || true
             docker rm github-ci-container || true
             docker run -p 3000:3000 -d --name github-ci-container ghcr.io/${{ github.repository_owner }}/github-ci:latest
-          "
