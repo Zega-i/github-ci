@@ -10,22 +10,18 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # ← GINI SAJA
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
@@ -35,22 +31,13 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest  # ← GINI JUGA
-    if: success()
-
+    runs-on: self-hosted # <--- KUNCI UTAMA: Runner ini yang akan menjalankan perintah
     steps:
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          password: ${{ secrets.DEPLOY_PASSWORD }}
-          script: |
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            docker stop github-ci-container || true
-            docker rm github-ci-container || true
-            docker run -p 3000:3000 -d \
-              --name github-ci-container \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            echo "✅ Deployed!"
+      - name: Deploy Local Server
+        run: |
+          # Perintah ini akan berjalan LANGSUNG di server Ubuntu Anda
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker stop github-ci-container || true
+          docker rm github-ci-container || true
+          docker run -p 3000:3000 -d --name github-ci-container ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "✅ Deployed Successfully via Self-Hosted Runner!"
