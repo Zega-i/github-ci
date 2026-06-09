@@ -25,12 +25,23 @@ jobs:
 
   deploy:
     needs: build-and-push
-    runs-on: self-hosted # Nah! Ini akan memerintahkan agen di Ubuntu Anda untuk bekerja
+    runs-on: ubuntu-latest
     steps:
-      - name: Deploy Container Locally
+      - name: Deploy to Server via SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_IP: "192.168.1.18"
         run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          sudo docker pull ghcr.io/$REPO_LOWER:latest
-          sudo docker stop github-ci-container || true
-          sudo docker rm github-ci-container || true
-          sudo docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest
+          
+          ssh -i ~/.ssh/id_rsa augus@$SERVER_IP "
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker pull ghcr.io/$REPO_LOWER:latest
+            docker stop github-ci-container || true 
+            docker rm github-ci-container || true
+            docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest
+          "
