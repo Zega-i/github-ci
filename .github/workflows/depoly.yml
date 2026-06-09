@@ -4,36 +4,53 @@ on:
   push:
     branches: [ "main" ]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # ← GINI SAJA
     permissions:
       contents: read
       packages: write
+
     steps:
-      - uses: actions/checkout@v3
-      
-      # TAMBAHKAN LANGKAH LOGIN INI
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
-        run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          docker build --pull -t ghcr.io/$REPO_LOWER:latest .
-          docker push ghcr.io/$REPO_LOWER:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   deploy:
     needs: build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest  # ← GINI JUGA
+    if: success()
+
     steps:
-      - name: Pull and run container
-        run: |
-            docker pull ghcr.io/${{ github.repository_owner }}/github-ci:latest
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             docker stop github-ci-container || true
             docker rm github-ci-container || true
-            docker run -p 3000:3000 -d --name github-ci-container ghcr.io/${{ github.repository_owner }}/github-ci:latest
+            docker run -p 3000:3000 -d \
+              --name github-ci-container \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            echo "✅ Deployed!"
