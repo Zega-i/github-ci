@@ -1,0 +1,36 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Proses build image tetap di server cloud GitHub
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build --pull -t ghcr.io/$REPO_LOWER:latest .
+          docker push ghcr.io/$REPO_LOWER:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: self-hosted # Nah! Ini akan memerintahkan agen di Ubuntu Anda untuk bekerja
+    steps:
+      - name: Deploy Container Locally
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          sudo docker pull ghcr.io/$REPO_LOWER:latest
+          sudo docker stop github-ci-container || true
+          sudo docker rm github-ci-container || true
+          sudo docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest
