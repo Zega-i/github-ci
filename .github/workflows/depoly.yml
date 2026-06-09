@@ -27,8 +27,7 @@ jobs:
         with:
           context: .
           push: true
-          # Menggunakan commit SHA sebagai tag unik
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   deploy:
     needs: build
@@ -36,11 +35,9 @@ jobs:
     steps:
       - name: Deploy Local Server
         run: |
-          # Pull tag yang spesifik berdasarkan commit terbaru
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          
+          # Perintah ini akan berjalan LANGSUNG di server Ubuntu Anda
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           docker stop github-ci-container || true
           docker rm github-ci-container || true
-          
-          # Jalankan container dengan tag spesifik
-          docker run -p 3000:3000 -d --name github-ci-container ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker run -p 3000:3000 -d --name github-ci-container ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "✅ Deployed Successfully via Self-Hosted Runner!"
