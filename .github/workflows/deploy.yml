@@ -43,5 +43,4 @@ jobs:
             docker pull ghcr.io/$REPO_LOWER:latest
             docker stop github-ci-container || true 
             docker rm github-ci-container || true
-            docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest
-          "
+            docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest"
