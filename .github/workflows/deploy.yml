@@ -38,9 +38,10 @@ jobs:
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           
-          ssh -i ~/.ssh/id_rsa augus@$SERVER_IP "
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-            docker pull ghcr.io/$REPO_LOWER:latest
-            docker stop github-ci-container || true 
-            docker rm github-ci-container || true
-            docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest"
+          ssh -i ~/.ssh/id_rsa augus@$SERVER_IP << 'EOF'
+          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker pull ghcr.io/$REPO_LOWER:latest
+          docker stop github-ci-container || true
+          docker rm github-ci-container || true
+          docker run -p 3000:3000 -d --name github-ci-container ghcr.io/$REPO_LOWER:latest
+          EOF
