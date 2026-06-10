@@ -35,9 +35,15 @@ jobs:
     steps:
       - name: Deploy Local Server
         run: |
-          # Perintah ini akan berjalan LANGSUNG di server Ubuntu Anda
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # Hapus kontainer lama
           docker stop github-ci-container || true
           docker rm github-ci-container || true
-          docker run -p 3000:3000 -d --name github-ci-container ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          echo "✅ Deployed Successfully via Self-Hosted Runner!"
+          
+          # Hapus image lama agar tidak pakai cache
+          docker rmi ghcr.io/zega-i/github-ci:latest || true
+          
+          # Pull image terbaru
+          docker pull ghcr.io/zega-i/github-ci:latest
+          
+          # Jalankan kontainer
+          docker run -p 3000:3000 -d --name github-ci-container ghcr.io/zega-i/github-ci:latest
